@@ -1,4 +1,3 @@
-# surgical_co_pilot.py
 import streamlit as st
 import google.generativeai as genai
 import torch
@@ -8,11 +7,14 @@ import numpy as np
 import cv2
 from PIL import Image
 import io
+import os
 from torch.fft import fft2, ifft2
 
-API_KEY = "AIzaSyBOArgGwNYvCGBWWToCi7eWmJEt8Is6NGo" 
+# Load API Key from environment variable (for security reasons)
+API_KEY = os.getenv('AIzaSyBOArgGwNYvCGBWWToCi7eWmJEt8Is6NGo')
 genai.configure(api_key=API_KEY)
 
+# Custom Optimizer Class
 class FFTGaLoreOptimizer:
     def __init__(self, params, rank=128, lr=3e-6):
         self.params = list(params)
@@ -28,6 +30,7 @@ class FFTGaLoreOptimizer:
             proj_grad = ifft2(fft_grad[..., :self.rank]).real
             p.data.add_(-self.lr * proj_grad)
 
+# Define the Surgical AI Model
 class SurgicalVLM(nn.Module):
     def __init__(self):
         super().__init__()
@@ -43,8 +46,10 @@ class SurgicalVLM(nn.Module):
         response = self.gemini.generate_content(inputs)
         return response.text
 
+# Set up Streamlit Web Interface
 st.set_page_config(page_title="Surgical AI Co-Pilot", layout="wide")
 
+# Initialize session state if not already initialized
 if 'agent' not in st.session_state:
     st.session_state.agent = SurgicalVLM()
     st.session_state.optimizer = FFTGaLoreOptimizer(st.session_state.agent.parameters())
@@ -92,19 +97,20 @@ with col2:
                 """
                 
                 # Prepare multimodal input
-                contents = [context + "\n\nSurgeon Query: " + query]
+                contents = {"text": context + "\n\nSurgeon Query: " + query}
                 
                 # Add image data if uploaded
                 if image_file:
                     img = Image.open(image_file)
                     buf = io.BytesIO()
                     img.save(buf, format='PNG')
-                    contents.append({
+                    img_data = base64.b64encode(buf.getvalue()).decode()  # Convert image to base64 string
+                    contents["image"] = {
                         "mime_type": "image/png",
-                        "data": base64.b64encode(buf.getvalue()).decode()
-                    })
+                        "data": img_data
+                    }
                 
-                # Generate response
+                # Generate response from the model
                 response = st.session_state.agent(contents)
                 
                 # Display results
@@ -128,9 +134,10 @@ with col2:
             except Exception as e:
                 st.error(f"Surgical analysis failed: {str(e)}")
 
+# Sidebar emergency button
 st.sidebar.markdown("---")
 if st.sidebar.button("🚨 Activate Emergency Protocol"):
-    st.sidebar.error("""
+    st.sidebar.error(""" 
     EMERGENCY MEASURES:
     1. Immediate hemostasis protocol
     2. Notify senior surgeon
@@ -138,5 +145,6 @@ if st.sidebar.button("🚨 Activate Emergency Protocol"):
     4. Prepare emergency imaging
     """)
 
+# Final clinical note
 if __name__ == "__main__":
     st.write("⚠️ **Clinical Note:** Verify all AI recommendations with surgical team")
