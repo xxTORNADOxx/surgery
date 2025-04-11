@@ -1,7 +1,6 @@
-streamlit 
-google-generativeai 
-torch 
-monai 
-pydicom 
-matplotlib 
+streamlit
+opencv-python-headless
+torch
+google-generativeai
+numpy
 pillow
